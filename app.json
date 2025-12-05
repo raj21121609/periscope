@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "periscope",
-    "slug": "periscope",
+    "name": "Cognitive Health Twin",
+    "slug": "cognitive-health-twin",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "periscope",
+    "scheme": "cognitive-health-twin",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {

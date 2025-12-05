@@ -1,41 +1,64 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
-
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+const palette = {
+  lavender: '#E6E6FA',
+  pastelBlue: '#B0E0E6',
+  softPink: '#FFB6C1',
+  deepBlue: '#4c669f',
+  white: '#FFFFFF',
+  glassWhite: 'rgba(255, 255, 255, 0.7)',
+  glassDark: 'rgba(20, 20, 40, 0.7)',
+  textDark: '#2D3436',
+  textLight: '#ECEDEE',
+};
+
+// Stress Colors
+export const StressColors = {
+  calm: '#00b894',    // Green
+  normal: '#0984e3',  // Blue
+  stressed: '#e17055',// Orange
+  high: '#d63031',    // Red
+};
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+    text: palette.textDark,
+    background: '#F0F4F8', // Very light grey/blue for main bg
+    tint: palette.deepBlue,
+    card: palette.glassWhite,
+    icon: '#636e72',
+    tabIconDefault: '#b2bec3',
+    tabIconSelected: palette.deepBlue,
+    primary: palette.deepBlue,
+    accent: palette.softPink,
+    lavender: palette.lavender,
+    pastelBlue: palette.pastelBlue,
   },
   dark: {
-    text: '#ECEDEE',
+    text: palette.textLight,
     background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+    tint: palette.lavender,
+    card: palette.glassDark,
+    icon: '#b2bec3',
+    tabIconDefault: '#636e72',
+    tabIconSelected: palette.lavender,
+    primary: palette.lavender,
+    accent: palette.deepBlue,
+    lavender: '#6c5ce7',
+    pastelBlue: '#0984e3',
   },
+};
+
+export const Layout = {
+  radius: 24,
+  padding: 20,
 };
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
   },
   default: {

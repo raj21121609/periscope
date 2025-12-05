@@ -31,7 +31,8 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera for stress scanning."
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera for stress scanning.",
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone for video analysis."
         }
       ],
       [

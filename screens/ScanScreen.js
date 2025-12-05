@@ -1,24 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { StyleSheet, Text, View, Image, TouchableOpacity, TextInput, ScrollView, Alert } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as ImagePicker from 'expo-image-picker';
 import { Colors, Layout } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { ActionButton } from '@/components/ui/ActionButton';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { analyzeStress } from '@/services/api';
 
 export default function ScanScreen() {
     const [permission, requestPermission] = useCameraPermissions();
-    const [image, setImage] = useState(null);
     const [analyzing, setAnalyzing] = useState(false);
     const [result, setResult] = useState(null);
     const [journalEntry, setJournalEntry] = useState('');
+    const [cameraActive, setCameraActive] = useState(false);
+    const cameraRef = useRef(null);
 
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme ?? 'light'];
 
     if (!permission) {
-        // Camera permissions are still loading.
         return <View />;
     }
 
@@ -31,27 +33,89 @@ export default function ScanScreen() {
         );
     }
 
-    const takePicture = async () => {
-        // Placeholder: In a real app, you'd use a ref to the camera and call takePictureAsync()
-        // For now, we'll simulate capturing an image by setting a dummy URI or just switching state
+    const processImage = async (uri) => {
         setAnalyzing(true);
-
-        // Simulate API delay
-        setTimeout(() => {
-            setAnalyzing(false);
-            setImage('dummy-uri'); // Normally this comes from camera
-            setResult({
-                stressLevel: 65,
-                mood: 'Anxious',
-                emoji: '😟',
+        try {
+            // Create FormData
+            const formData = new FormData();
+            formData.append('image', {
+                uri: uri,
+                name: 'scan.jpg',
+                type: 'image/jpeg',
             });
-        }, 2000);
+
+            // Call API
+            const apiResult = await analyzeStress(formData);
+
+            // Map API result to UI state
+            setResult({
+                stressLevel: apiResult.stress_level,
+                mood: apiResult.emotion,
+                emoji: getEmojiForEmotion(apiResult.emotion),
+                explanation: apiResult.explanation
+            });
+
+        } catch (error) {
+            Alert.alert('Scan Failed', 'Could not analyze stress. Please try again.');
+            console.error(error);
+        } finally {
+            setAnalyzing(false);
+            setCameraActive(false);
+        }
+    };
+
+    const takePicture = async () => {
+        if (!cameraRef.current) return;
+        try {
+            const photo = await cameraRef.current.takePictureAsync({
+                quality: 0.5,
+                base64: false,
+            });
+            processImage(photo.uri);
+        } catch (error) {
+            console.error("Camera error:", error);
+            Alert.alert("Camera Error", "Could not capture image. Try uploading instead.");
+        }
+    };
+
+    const pickImage = async () => {
+        try {
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [4, 3],
+                quality: 0.5,
+            });
+
+            if (!result.canceled) {
+                processImage(result.assets[0].uri);
+            }
+        } catch (error) {
+            console.error("Picker error:", error);
+            Alert.alert("Upload Error", "Could not display image picker.");
+        }
+    };
+
+    const getEmojiForEmotion = (emotion) => {
+        const map = {
+            happy: '😊',
+            happiness: '😊',
+            sad: '😢',
+            sadness: '😢',
+            angry: '😠',
+            anger: '😠',
+            fear: '😨',
+            surprise: '😲',
+            neutral: '😐',
+            disgust: '🤢'
+        };
+        return map[emotion ? emotion.toLowerCase() : 'neutral'] || '😐';
     };
 
     const resetScan = () => {
-        setImage(null);
         setResult(null);
         setJournalEntry('');
+        setCameraActive(false);
     };
 
     const saveJournal = () => {
@@ -71,9 +135,12 @@ export default function ScanScreen() {
                         </View>
                         <Text style={[styles.moodText, { color: theme.text }]}>{result.mood}</Text>
                         <Text style={[styles.stressText, { color: theme.icon }]}>Stress Level: {result.stressLevel}%</Text>
+                        <Text style={[styles.explanationText, { color: theme.icon, textAlign: 'center', marginBottom: 10 }]}>
+                            {result.explanation}
+                        </Text>
 
                         <View style={styles.progressBarBg}>
-                            <View style={[styles.progressBarFill, { width: `${result.stressLevel}%`, backgroundColor: '#e17055' }]} />
+                            <View style={[styles.progressBarFill, { width: `${result.stressLevel}%`, backgroundColor: result.stressLevel > 50 ? '#e17055' : '#00b894' }]} />
                         </View>
                     </GlassCard>
 
@@ -100,20 +167,54 @@ export default function ScanScreen() {
     }
 
     return (
-        <View style={styles.container}>
-            <CameraView style={styles.camera} facing="front">
-                <View style={styles.cameraOverlay}>
-                    <Text style={styles.overlayText}>Center your face</Text>
+        <View style={[styles.container, { backgroundColor: theme.background }]}>
+            {cameraActive ? (
+                <View style={StyleSheet.absoluteFill}>
+                    <CameraView
+                        style={StyleSheet.absoluteFill}
+                        facing="front"
+                        mode="picture"
+                        ref={cameraRef}
+                    />
+                    <View style={styles.cameraOverlay}>
+                        <Text style={styles.overlayText}>Center your face</Text>
 
-                    <TouchableOpacity style={styles.captureBtn} onPress={takePicture} disabled={analyzing}>
-                        {analyzing ? (
-                            <View style={styles.analyzingIndicator} />
-                        ) : (
-                            <View style={styles.captureInner} />
-                        )}
+                        <View style={styles.controlsContainer}>
+                            <TouchableOpacity style={styles.secondaryBtn} onPress={() => setCameraActive(false)}>
+                                <IconSymbol name="xmark" size={24} color="#fff" />
+                            </TouchableOpacity>
+
+                            <TouchableOpacity style={styles.captureBtn} onPress={takePicture} disabled={analyzing}>
+                                {analyzing ? (
+                                    <View style={styles.analyzingIndicator} />
+                                ) : (
+                                    <View style={styles.captureInner} />
+                                )}
+                            </TouchableOpacity>
+
+                            <View style={{ width: 50 }} />
+                        </View>
+                    </View>
+                </View>
+            ) : (
+                <View style={styles.placeholderContainer}>
+                    <Text style={[styles.title, { color: theme.text, marginBottom: 10 }]}>Scan Your Face</Text>
+                    <Text style={[styles.subtitle, { color: theme.icon, textAlign: 'center', marginBottom: 40 }]}>
+                        Analyze your stress levels using AI.
+                    </Text>
+
+                    <ActionButton
+                        title="Open Camera"
+                        onPress={() => setCameraActive(true)}
+                        style={{ marginBottom: 20 }}
+                    />
+
+                    <TouchableOpacity onPress={pickImage} style={styles.uploadBtn}>
+                        <IconSymbol name="photo.fill" size={20} color={theme.primary} />
+                        <Text style={{ marginLeft: 10, color: theme.primary, fontWeight: '600' }}>Upload from Gallery</Text>
                     </TouchableOpacity>
                 </View>
-            </CameraView>
+            )}
         </View>
     );
 }
@@ -131,9 +232,6 @@ const styles = StyleSheet.create({
     message: {
         textAlign: 'center',
         marginBottom: 20,
-    },
-    camera: {
-        flex: 1,
     },
     cameraOverlay: {
         flex: 1,
@@ -154,6 +252,12 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         overflow: 'hidden',
     },
+    controlsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 30,
+    },
     captureBtn: {
         width: 80,
         height: 80,
@@ -163,6 +267,14 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderWidth: 4,
         borderColor: '#fff',
+    },
+    secondaryBtn: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     captureInner: {
         width: 60,
@@ -206,6 +318,10 @@ const styles = StyleSheet.create({
         fontSize: 16,
         marginBottom: 20,
     },
+    explanationText: {
+        fontSize: 14,
+        fontStyle: 'italic',
+    },
     progressBarBg: {
         width: '100%',
         height: 10,
@@ -242,6 +358,21 @@ const styles = StyleSheet.create({
         marginRight: 10,
     },
     retryBtn: {
+        padding: 15,
+    },
+    placeholderContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20
+    },
+    subtitle: {
+        fontSize: 16,
+        marginBottom: 20,
+    },
+    uploadBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
         padding: 15,
     }
 });
